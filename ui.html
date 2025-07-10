@@ -1,0 +1,990 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ASCII Art Playground</title>
+    
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    
+    <!-- Tailwind and shadcn/ui -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                container: {
+                    center: true,
+                    padding: "2rem",
+                    screens: {
+                        "2xl": "1400px",
+                    },
+                },
+                extend: {
+                    colors: {
+                        border: "oklch(0.9 0 0)",
+                        input: "oklch(0.9 0 0)",
+                        ring: "oklch(0.85 0 0)",
+                        background: "oklch(1 0 0)",
+                        foreground: "oklch(0.2 0 0)",
+                        primary: {
+                            DEFAULT: "oklch(0.3 0 0)",
+                            foreground: "oklch(1 0 0)",
+                        },
+                        secondary: {
+                            DEFAULT: "oklch(0.95 0 0)",
+                            foreground: "oklch(0.2 0 0)",
+                        },
+                        muted: {
+                            DEFAULT: "oklch(0.95 0 0)",
+                            foreground: "oklch(0.4 0 0)",
+                        },
+                        accent: {
+                            DEFAULT: "oklch(0.95 0 0)",
+                            foreground: "oklch(0.2 0 0)",
+                        },
+                    },
+                    borderRadius: {
+                        lg: "0.5rem",
+                        md: "calc(0.5rem - 2px)",
+                        sm: "calc(0.5rem - 4px)",
+                    },
+                    fontFamily: {
+                        sans: ["Inter", "sans-serif"],
+                        mono: ["JetBrains Mono", "monospace"],
+                    },
+                },
+            },
+        }
+    </script>
+    
+    <style>
+        /* Base Styles */
+        :root {
+            --spacing: 0.25rem;
+            --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+            --shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+            --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+            --radius: 0.375rem;
+            
+            /* Light Theme Colors */
+            --background: oklch(1 0 0);
+            --foreground: oklch(0.2 0 0);
+            --frame-border: oklch(0.95 0 0);
+            --muted: oklch(0.8 0 0);
+            --card-bg: oklch(1 0 0);
+            --card-border: oklch(0.9 0 0);
+            --canvas-bg: oklch(0.98 0 0);
+        }
+
+        /* Dark Theme Colors */
+        .dark {
+            --background: oklch(0.2 0 0);
+            --foreground: oklch(1 0 0);
+            --frame-border: oklch(0.15 0 0);
+            --muted: oklch(0.6 0 0);
+            --card-bg: oklch(0.25 0 0);
+            --card-border: oklch(0.3 0 0);
+            --canvas-bg: oklch(0.15 0 0);
+        }
+
+        body {
+            background: var(--background);
+            color: var(--foreground);
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        /* Theme Toggle */
+        .theme-toggle-container {
+            position: fixed;
+            top: 1rem;
+            right: 1rem;
+            z-index: 50;
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            padding: 0.5rem 1rem;
+            border-radius: var(--radius);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .theme-toggle-container input[type="checkbox"] {
+            width: 1rem;
+            height: 1rem;
+        }
+
+        /* Screens Container */
+        .screens-container {
+            display: flex;
+            gap: 2rem;
+            padding: 2rem;
+            overflow-x: auto;
+            min-height: 100vh;
+            align-items: center;
+        }
+
+        /* Device Frame */
+        .device-frame {
+            position: relative;
+            width: 375px;
+            height: 812px;
+            background: var(--background);
+            border-radius: 48px;
+            box-shadow: 0 0 0 10px var(--frame-border);
+            overflow: hidden;
+            flex-shrink: 0;
+            transition: background-color 0.3s, box-shadow 0.3s;
+        }
+
+        /* Home Indicator */
+        .home-indicator {
+            position: absolute;
+            bottom: 8px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 120px;
+            height: 4px;
+            background: var(--muted);
+            border-radius: 2px;
+            opacity: 0.5;
+            z-index: 10;
+        }
+
+        /* Screen Content */
+        .device-screen {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            overflow-x: hidden;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+            transition: height 0.3s;
+        }
+
+        .device-screen.no-scroll {
+            overflow: hidden;
+            height: auto;
+            min-height: 100%;
+        }
+
+        .content {
+            padding: 48px 16px 32px;
+        }
+
+        /* shadcn/ui Component Styles */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: var(--radius);
+            font-weight: 500;
+            padding: 8px 16px;
+            transition: all 0.2s;
+        }
+
+        .btn-primary {
+            background: var(--foreground);
+            color: var(--background);
+        }
+
+        .btn-outline {
+            border: 1px solid var(--muted);
+            background: transparent;
+            color: var(--foreground);
+        }
+
+        .btn-ghost {
+            background: transparent;
+            color: var(--foreground);
+            padding: 8px;
+        }
+
+        .card {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: var(--radius);
+            padding: 16px;
+            box-shadow: var(--shadow-sm);
+            transition: background-color 0.3s, border-color 0.3s;
+        }
+
+        .input {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid var(--card-border);
+            border-radius: var(--radius);
+            font-family: var(--font-mono);
+            background: var(--card-bg);
+            color: var(--foreground);
+            transition: background-color 0.3s, border-color 0.3s, color 0.3s;
+        }
+
+        /* ASCII Canvas */
+        .ascii-canvas {
+            font-family: var(--font-mono);
+            line-height: 1;
+            white-space: pre;
+            background: var(--canvas-bg);
+            border-radius: var(--radius);
+            padding: 16px;
+            overflow: hidden;
+            height: 300px;
+            transition: background-color 0.3s;
+        }
+
+        /* Navigation Dots */
+        .nav-dots {
+            position: fixed;
+            bottom: 2rem;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 0.5rem;
+            padding: 0.5rem;
+            background: var(--card-bg);
+            border-radius: 999px;
+            box-shadow: var(--shadow-md);
+        }
+
+        .nav-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--muted);
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        .nav-dot.active {
+            background: var(--foreground);
+        }
+
+        /* Add tooltip styles */
+        .tooltip {
+            position: relative;
+            display: inline-flex;
+            align-items: center;
+        }
+
+        .tooltip::after {
+            content: attr(data-tooltip);
+            position: absolute;
+            bottom: calc(100% + 5px);
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 0.5rem;
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: var(--radius);
+            font-size: 0.75rem;
+            white-space: nowrap;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s;
+            box-shadow: var(--shadow-sm);
+            z-index: 60;
+        }
+
+        .tooltip:hover::after {
+            opacity: 1;
+        }
+    </style>
+</head>
+<body>
+    <!-- Theme Toggle -->
+    <div class="theme-toggle-container">
+        <div class="flex items-center gap-4">
+            <label class="tooltip flex items-center gap-2 text-sm" data-tooltip="Disable scrolling to capture full-page screenshots">
+                <input type="checkbox" id="global-scroll-toggle" checked>
+                <span>Enable scroll</span>
+            </label>
+            <button class="tooltip btn btn-ghost" id="theme-toggle" aria-label="Toggle theme" data-tooltip="Switch theme">
+                🌙
+            </button>
+        </div>
+    </div>
+
+    <!-- Screens Container -->
+    <div class="screens-container">
+        <!-- Screen 1: Main Editor -->
+        <div class="device-frame">
+            <div class="home-indicator"></div>
+            <div class="device-screen">
+                <div class="content">
+                    <!-- Header -->
+                    <header class="mb-8">
+                        <h1 class="text-2xl font-bold mb-2">ASCII Art</h1>
+                        <p class="text-sm text-muted-foreground">Create beautiful ASCII animations</p>
+                    </header>
+
+                    <!-- Canvas Card -->
+                    <div class="card mb-6">
+                        <div class="ascii-canvas font-mono text-sm" id="canvas">
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⣀⣀⣀⣀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⠀⠀⢀⣴⠾⠛⢉⣉⡙⠛⠷⣦⣄⠀⠀⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⢀⣴⠋⣠⠴⠚⠉⠉⠙⠓⠦⣄⠙⢷⡀⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⣰⠟⢁⡴⠋⠀⠀⠀⠀⠀⠀⠀⠈⠳⣄⠹⣆⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⣰⠏⣰⠟⠁⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠘⢷⡘⢧⠀⠀⠀⠀
+⠀⠀⠀⣼⠃⣰⠃⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠈⢷⡘⣇⠀⠀⠀
+⠀⠀⣸⡟⢠⡏⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠘⣧⢹⣇⠀⠀
+⠀⢠⡿⠀⣾⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢿⠀⢿⡄⠀
+⠀⣾⡇⠀⣿⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢸⡇⢸⣷⠀
+⢰⡿⠀⠀⢿⡀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣸⡇⠀⢿⡆
+⣼⡇⠀⠀⠘⣷⡀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⣿⠃⠀⢸⣧
+⣿⠁⠀⠀⠀⠘⢷⣄⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⣠⡾⠃⠀⠀⠈⣿
+⣿⠀⠀⠀⠀⠀⠀⠙⠻⠶⢤⣤⣤⣤⣤⣤⣤⡴⠶⠛⠉⠀⠀⠀⠀⠀⣿
+⢻⡄⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣠⡟
+⠀⠻⣄⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⣴⠟⠀
+⠀⠀⠈⠛⢶⣄⡀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣀⣤⠶⠛⠁⠀⠀
+⠀⠀⠀⠀⠀⠈⠉⠛⠒⠶⠤⠤⣤⣤⣤⡤⠤⠴⠖⠛⠉⠀⠀⠀⠀⠀⠀</div>
+                    </div>
+
+                    <!-- Controls Card -->
+                    <div class="card mb-6">
+                        <h2 class="text-lg font-semibold mb-4">Controls</h2>
+                        <div class="space-y-4">
+                            <!-- Character Set -->
+                            <div>
+                                <label class="block text-sm font-medium mb-2">Character Set</label>
+                                <input type="text" class="input" value="⠀⠁⠂⠃⠄⠅⠆⠇⠈⠉⠊⠋⠌⠍⠎⠏" />
+                            </div>
+                            
+                            <!-- Animation Speed -->
+                            <div>
+                                <label class="block text-sm font-medium mb-2">Animation Speed</label>
+                                <input type="range" class="w-full" min="1" max="10" value="5" />
+                            </div>
+                            
+                            <!-- Pattern -->
+                            <div>
+                                <label class="block text-sm font-medium mb-2">Pattern</label>
+                                <select class="input">
+                                    <option>Wave</option>
+                                    <option>Spiral</option>
+                                    <option>Random</option>
+                                    <option>Rain</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Action Buttons -->
+                    <div class="flex space-x-3">
+                        <button class="btn btn-primary flex-1">
+                            Start Animation
+                        </button>
+                        <button class="btn btn-outline">
+                            Save
+                        </button>
+                    </div>
+
+                    <!-- Presets -->
+                    <div class="mt-8">
+                        <h2 class="text-lg font-semibold mb-4">Presets</h2>
+                        <div class="grid grid-cols-2 gap-3">
+                            <div class="card cursor-pointer transition-shadow" data-preset="0">
+                                <div class="text-xs font-mono mb-2">⚡️ Lightning</div>
+                                <div class="text-sm text-muted-foreground">Fast, electric pattern</div>
+                            </div>
+                            <div class="card cursor-pointer transition-shadow" data-preset="1">
+                                <div class="text-xs font-mono mb-2">🌊 Wave</div>
+                                <div class="text-sm text-muted-foreground">Smooth, flowing motion</div>
+                            </div>
+                            <div class="card cursor-pointer transition-shadow" data-preset="2">
+                                <div class="text-xs font-mono mb-2">🌀 Spiral</div>
+                                <div class="text-sm text-muted-foreground">Hypnotic rotation</div>
+                            </div>
+                            <div class="card cursor-pointer transition-shadow" data-preset="3">
+                                <div class="text-xs font-mono mb-2">🎲 Random</div>
+                                <div class="text-sm text-muted-foreground">Chaotic patterns</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Screen 2: Gallery -->
+        <div class="device-frame">
+            <div class="home-indicator"></div>
+            <div class="device-screen">
+                <div class="content">
+                    <header class="mb-8">
+                        <h1 class="text-2xl font-bold mb-2">Gallery</h1>
+                        <p class="text-sm text-muted-foreground">Your saved ASCII creations</p>
+                    </header>
+
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="card hover:shadow-md cursor-pointer">
+                            <div class="ascii-canvas text-xs h-32">
+⠀⠀⠀⣀⣤⣴⣶⣶⣶⣦⣤⣀⠀
+⢀⣴⣾⣿⣿⣿⣿⣿⣿⣿⣿⣿⣷⣤⡀
+⣾⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣷
+⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿
+⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿
+⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿
+⢿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⡿
+⠈⠻⢿⣿⣿⣿⣿⣿⣿⣿⣿⡿⠟⠁
+⠀⠀⠀⠉⠛⠻⠿⠿⠿⠟⠋</div>
+                            <div class="mt-2">
+                                <h3 class="font-medium">Heart</h3>
+                                <p class="text-sm text-muted-foreground">Created 2d ago</p>
+                            </div>
+                        </div>
+                        <div class="card hover:shadow-md cursor-pointer">
+                            <div class="ascii-canvas text-xs h-32">
+⠀⠀⠀⠀⠀⠀⢀⣀⣀⣀⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⣠⣾⣿⣿⣿⣿⣿⣦⡀⠀⠀⠀
+⠀⠀⢀⣾⣿⣿⣿⣿⣿⣿⣿⣿⣷⡄⠀⠀
+⠀⢀⣾⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣷⡀⠀
+⢀⣾⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣧⠀
+⣼⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⡆
+⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿
+⠘⢿⣿⣿⣿⣿⣿⣿⣿⣿⣿⡿⠿⠛⠁⠀
+⠀⠀⠙⠛⠿⠿⠿⠿⠛⠋⠁⠀⠀⠀⠀⠀</div>
+                            <div class="mt-2">
+                                <h3 class="font-medium">Star</h3>
+                                <p class="text-sm text-muted-foreground">Created 3d ago</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Screen 3: Settings -->
+        <div class="device-frame">
+            <div class="home-indicator"></div>
+            <div class="device-screen">
+                <div class="content">
+                    <header class="mb-8">
+                        <h1 class="text-2xl font-bold mb-2">Settings</h1>
+                        <p class="text-sm text-muted-foreground">Customize your experience</p>
+                    </header>
+
+                    <div class="space-y-6">
+                        <div class="card">
+                            <h2 class="text-lg font-semibold mb-4">Display</h2>
+                            <div class="space-y-4">
+                                <div>
+                                    <label class="block text-sm font-medium mb-2">Canvas Size</label>
+                                    <select class="input">
+                                        <option>Small (16x16)</option>
+                                        <option>Medium (32x32)</option>
+                                        <option>Large (64x64)</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium mb-2">Font Size</label>
+                                    <select class="input">
+                                        <option>Small</option>
+                                        <option>Medium</option>
+                                        <option>Large</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="card">
+                            <h2 class="text-lg font-semibold mb-4">Export</h2>
+                            <div class="space-y-4">
+                                <div>
+                                    <label class="block text-sm font-medium mb-2">Format</label>
+                                    <select class="input">
+                                        <option>Plain Text</option>
+                                        <option>HTML</option>
+                                        <option>SVG</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium mb-2">Auto-save</label>
+                                    <label class="flex items-center space-x-2">
+                                        <input type="checkbox" class="w-4 h-4">
+                                        <span class="text-sm">Enable auto-save</span>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Screen 4: Export -->
+        <div class="device-frame">
+            <div class="home-indicator"></div>
+            <div class="device-screen">
+                <div class="content">
+                    <header class="mb-8">
+                        <h1 class="text-2xl font-bold mb-2">Export</h1>
+                        <p class="text-sm text-muted-foreground">Share your ASCII creations</p>
+                    </header>
+
+                    <div class="space-y-6">
+                        <!-- Preview -->
+                        <div class="card">
+                            <h2 class="text-lg font-semibold mb-4">Preview</h2>
+                            <div class="ascii-canvas text-sm h-64 mb-4">
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⣀⣀⣀⣀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⠀⠀⢀⣴⠾⠛⢉⣉⡙⠛⠷⣦⣄⠀⠀⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⢀⣴⠋⣠⠴⠚⠉⠉⠙⠓⠦⣄⠙⢷⡀⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⣰⠟⢁⡴⠋⠀⠀⠀⠀⠀⠀⠀⠈⠳⣄⠹⣆⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⣰⠏⣰⠟⠁⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠘⢷⡘⢧⠀⠀⠀⠀
+⠀⠀⠀⣼⠃⣰⠃⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠈⢷⡘⣇⠀⠀⠀
+⠀⠀⣸⡟⢠⡏⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠘⣧⢹⣇⠀⠀
+⠀⢠⡿⠀⣾⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢿⠀⢿⡄⠀
+⠀⣾⡇⠀⣿⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢸⡇⢸⣷⠀
+⢰⡿⠀⠀⢿⡀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣸⡇⠀⢿⡆
+⣼⡇⠀⠀⠘⣷⡀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⣿⠃⠀⢸⣧
+⣿⠁⠀⠀⠀⠘⢷⣄⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⣠⡾⠃⠀⠀⠈⣿
+⣿⠀⠀⠀⠀⠀⠀⠙⠻⠶⢤⣤⣤⣤⣤⣤⣤⡴⠶⠛⠉⠀⠀⠀⠀⠀⣿
+⢻⡄⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣠⡟
+⠀⠻⣄⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⣴⠟⠀
+⠀⠀⠈⠛⢶⣄⡀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣀⣤⠶⠛⠁⠀⠀
+⠀⠀⠀⠀⠀⠈⠉⠛⠒⠶⠤⠤⣤⣤⣤⡤⠤⠴⠖⠛⠉⠀⠀⠀⠀⠀⠀</div>
+                        <div class="flex justify-between items-center">
+                            <div class="text-sm text-muted-foreground">Current animation: Wave</div>
+                            <button class="btn btn-outline">Preview</button>
+                        </div>
+                    </div>
+
+                    <!-- Export Options -->
+                    <div class="card">
+                        <h2 class="text-lg font-semibold mb-4">Export Options</h2>
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-sm font-medium mb-2">Format</label>
+                                <select class="input">
+                                    <option>Animated GIF</option>
+                                    <option>MP4 Video</option>
+                                    <option>Plain Text</option>
+                                    <option>HTML/CSS</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium mb-2">Quality</label>
+                                <select class="input">
+                                    <option>High (60 FPS)</option>
+                                    <option>Medium (30 FPS)</option>
+                                    <option>Low (15 FPS)</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium mb-2">Size</label>
+                                <select class="input">
+                                    <option>Original</option>
+                                    <option>Compact</option>
+                                    <option>Large</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Share Options -->
+                    <div class="card">
+                        <h2 class="text-lg font-semibold mb-4">Share</h2>
+                        <div class="grid grid-cols-2 gap-3">
+                            <button class="btn btn-outline flex items-center justify-center gap-2">
+                                <span>Copy Link</span>
+                            </button>
+                            <button class="btn btn-outline flex items-center justify-center gap-2">
+                                <span>Download</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Screen 5: Profile -->
+        <div class="device-frame">
+            <div class="home-indicator"></div>
+            <div class="device-screen">
+                <div class="content">
+                    <header class="mb-8">
+                        <h1 class="text-2xl font-bold mb-2">Profile</h1>
+                        <p class="text-sm text-muted-foreground">Your account & preferences</p>
+                    </header>
+
+                    <div class="space-y-6">
+                        <!-- User Info -->
+                        <div class="card">
+                            <div class="flex items-center gap-4">
+                                <div class="w-16 h-16 rounded-full bg-accent flex items-center justify-center text-2xl">
+                                    👤
+                                </div>
+                                <div>
+                                    <h2 class="text-lg font-semibold">Guest User</h2>
+                                    <p class="text-sm text-muted-foreground">Sign in to save your creations</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Stats -->
+                        <div class="card">
+                            <h2 class="text-lg font-semibold mb-4">Stats</h2>
+                            <div class="grid grid-cols-3 gap-4">
+                                <div class="text-center">
+                                    <div class="text-2xl font-semibold">12</div>
+                                    <div class="text-sm text-muted-foreground">Creations</div>
+                                </div>
+                                <div class="text-center">
+                                    <div class="text-2xl font-semibold">256</div>
+                                    <div class="text-sm text-muted-foreground">Views</div>
+                                </div>
+                                <div class="text-center">
+                                    <div class="text-2xl font-semibold">8</div>
+                                    <div class="text-sm text-muted-foreground">Likes</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Preferences -->
+                        <div class="card">
+                            <h2 class="text-lg font-semibold mb-4">Preferences</h2>
+                            <div class="space-y-4">
+                                <div>
+                                    <label class="flex items-center justify-between">
+                                        <span class="text-sm">Auto-save creations</span>
+                                        <input type="checkbox" class="w-4 h-4" checked>
+                                    </label>
+                                </div>
+                                <div>
+                                    <label class="flex items-center justify-between">
+                                        <span class="text-sm">Show grid lines</span>
+                                        <input type="checkbox" class="w-4 h-4">
+                                    </label>
+                                </div>
+                                <div>
+                                    <label class="flex items-center justify-between">
+                                        <span class="text-sm">Public profile</span>
+                                        <input type="checkbox" class="w-4 h-4" checked>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Screen 6: Tutorial -->
+        <div class="device-frame">
+            <div class="home-indicator"></div>
+            <div class="device-screen">
+                <div class="content">
+                    <header class="mb-8">
+                        <h1 class="text-2xl font-bold mb-2">Tutorial</h1>
+                        <p class="text-sm text-muted-foreground">Learn how to create ASCII art</p>
+                    </header>
+
+                    <div class="space-y-6">
+                        <!-- Quick Start -->
+                        <div class="card">
+                            <h2 class="text-lg font-semibold mb-4">Quick Start</h2>
+                            <div class="space-y-4">
+                                <div class="flex gap-4">
+                                    <div class="w-8 h-8 rounded-full bg-accent flex items-center justify-center font-semibold">1</div>
+                                    <div>
+                                        <h3 class="font-medium">Choose Characters</h3>
+                                        <p class="text-sm text-muted-foreground">Select or input ASCII characters for your animation</p>
+                                    </div>
+                                </div>
+                                <div class="flex gap-4">
+                                    <div class="w-8 h-8 rounded-full bg-accent flex items-center justify-center font-semibold">2</div>
+                                    <div>
+                                        <h3 class="font-medium">Set Pattern</h3>
+                                        <p class="text-sm text-muted-foreground">Choose an animation pattern or create your own</p>
+                                    </div>
+                                </div>
+                                <div class="flex gap-4">
+                                    <div class="w-8 h-8 rounded-full bg-accent flex items-center justify-center font-semibold">3</div>
+                                    <div>
+                                        <h3 class="font-medium">Customize</h3>
+                                        <p class="text-sm text-muted-foreground">Adjust speed, size, and other parameters</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Tips & Tricks -->
+                        <div class="card">
+                            <h2 class="text-lg font-semibold mb-4">Tips & Tricks</h2>
+                            <div class="space-y-3">
+                                <div class="text-sm">
+                                    <span class="font-medium">💡 Character Density:</span>
+                                    <span class="text-muted-foreground">Use a mix of light and heavy characters for depth</span>
+                                </div>
+                                <div class="text-sm">
+                                    <span class="font-medium">💡 Animation Speed:</span>
+                                    <span class="text-muted-foreground">Slower animations are often more visually appealing</span>
+                                </div>
+                                <div class="text-sm">
+                                    <span class="font-medium">💡 Save Versions:</span>
+                                    <span class="text-muted-foreground">Create multiple variations of your animations</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Examples -->
+                        <div class="card">
+                            <h2 class="text-lg font-semibold mb-4">Examples</h2>
+                            <div class="grid grid-cols-2 gap-3">
+                                <div class="card hover:shadow-md cursor-pointer">
+                                    <div class="ascii-canvas text-xs h-24">
+⠁⠂⠄⡀⢀⣀
+⠈⠐⠠⢈⢐⣐
+⠊⠑⠡⢊⢑⣑
+⠌⠒⠢⢌⢒⣒
+⠍⠓⠣⢍⢓⣓
+⠎⠔⠤⢎⢔⣔</div>
+                                    <div class="mt-2 text-sm font-medium">Rain Effect</div>
+                                </div>
+                                <div class="card hover:shadow-md cursor-pointer">
+                                    <div class="ascii-canvas text-xs h-24">
+○◔◑◕●●◕◑◔○
+○◔◑◕●●◕◑◔○
+○◔◑◕●●◕◑◔○
+○◔◑◕●●◕◑◔○</div>
+                                    <div class="mt-2 text-sm font-medium">Pulse Effect</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Update Navigation Dots -->
+    <div class="nav-dots">
+        <div class="nav-dot active"></div>
+        <div class="nav-dot"></div>
+        <div class="nav-dot"></div>
+        <div class="nav-dot"></div>
+        <div class="nav-dot"></div>
+        <div class="nav-dot"></div>
+    </div>
+
+    <script src="animation.js"></script>
+
+    <script>
+        // Theme Toggle
+        const theme = {
+            init() {
+                this.html = document.documentElement;
+                this.toggle = document.getElementById('theme-toggle');
+                this.prefersDark = window.matchMedia('(prefers-color-scheme: dark)');
+                
+                // Load saved preference or system preference
+                const savedTheme = localStorage.getItem('theme');
+                if (savedTheme) {
+                    document.body.classList.toggle('dark', savedTheme === 'dark');
+                    this.updateToggleButton(savedTheme === 'dark');
+                } else {
+                    document.body.classList.toggle('dark', this.prefersDark.matches);
+                    this.updateToggleButton(this.prefersDark.matches);
+                }
+                
+                // Setup listeners
+                this.toggle.addEventListener('click', () => this.toggleTheme());
+                this.prefersDark.addEventListener('change', (e) => this.systemThemeChanged(e));
+            },
+            
+            toggleTheme() {
+                const isDark = document.body.classList.toggle('dark');
+                localStorage.setItem('theme', isDark ? 'dark' : 'light');
+                this.updateToggleButton(isDark);
+            },
+            
+            systemThemeChanged(e) {
+                if (!localStorage.getItem('theme')) {
+                    document.body.classList.toggle('dark', e.matches);
+                    this.updateToggleButton(e.matches);
+                }
+            },
+
+            updateToggleButton(isDark) {
+                this.toggle.innerHTML = isDark ? '☀️' : '🌙';
+            }
+        };
+
+        // Initialize theme
+        theme.init();
+
+        // Navigation Dots
+        const dots = document.querySelectorAll('.nav-dot');
+        const screens = document.querySelector('.screens-container');
+        
+        dots.forEach((dot, index) => {
+            dot.addEventListener('click', () => {
+                // Update active dot
+                dots.forEach(d => d.classList.remove('active'));
+                dot.classList.add('active');
+                
+                // Scroll to screen
+                const screenWidth = 375 + 32; // device width + gap
+                screens.scrollTo({
+                    left: index * screenWidth,
+                    behavior: 'smooth'
+                });
+            });
+        });
+
+        // Update active dot on scroll
+        screens.addEventListener('scroll', () => {
+            const screenWidth = 375 + 32;
+            const activeIndex = Math.round(screens.scrollLeft / screenWidth);
+            
+            dots.forEach((dot, index) => {
+                dot.classList.toggle('active', index === activeIndex);
+            });
+        });
+
+        // Global Scroll Toggle
+        const globalScrollToggle = document.getElementById('global-scroll-toggle');
+        const deviceScreens = document.querySelectorAll('.device-screen');
+        
+        globalScrollToggle.addEventListener('change', (e) => {
+            deviceScreens.forEach(screen => {
+                screen.classList.toggle('no-scroll', !e.target.checked);
+            });
+        });
+
+        // === ASCII Art Animation Integration ===
+        (function() {
+            // DOM Elements
+            const canvas = document.getElementById('canvas');
+            const charsetInput = document.querySelector('input[type="text"]');
+            const speedInput = document.querySelector('input[type="range"]');
+            const patternSelect = document.querySelector('select');
+            const startBtn = document.querySelector('.btn-primary');
+            // Preset cards
+            const presetCards = document.querySelectorAll('.mt-8 [data-preset]');
+
+            if (presetCards.length === 0) {
+                console.warn('No preset cards found! Check selector or HTML structure.');
+            }
+
+            // Preset definitions
+            const presets = [
+                {
+                    name: 'Lightning',
+                    charset: '⠁⠂⠄⡀⢀⣀',
+                    pattern: 'Random',
+                    speed: 9
+                },
+                {
+                    name: 'Wave',
+                    charset: '⠁⠂⠃⠄⠅⠆⠇⠈⠉⠊⠋⠌⠍⠎⠏',
+                    pattern: 'Wave',
+                    speed: 5
+                },
+                {
+                    name: 'Spiral',
+                    charset: ' .oO@',
+                    pattern: 'Spiral',
+                    speed: 6
+                },
+                {
+                    name: 'Random',
+                    charset: '*•○●',
+                    pattern: 'Random',
+                    speed: 7
+                }
+            ];
+
+            // Default values
+            let width = 32;
+            let height = 16;
+            let charset = charsetInput.value;
+            let fps = Number(speedInput.value) * 6; // Map 1-10 to 6-60 FPS
+            let patternName = patternSelect.value;
+            let running = false;
+            let selectedPreset = null;
+
+            // Pattern mapping
+            function getPattern(name) {
+                switch (name) {
+                    case 'Wave': return new window.Patterns.WavePattern(width, height, charset);
+                    case 'Spiral': return new window.Patterns.SpiralPattern(width, height, charset);
+                    case 'Rain': return new window.Patterns.RainPattern(width, height, charset);
+                    case 'Random': return new window.Patterns.RandomPattern(width, height, charset);
+                    default: return new window.Patterns.WavePattern(width, height, charset);
+                }
+            }
+
+            // Engine instance
+            let engine = new window.AnimationEngine({
+                width,
+                height,
+                charset,
+                pattern: getPattern(patternName),
+                fps,
+                onFrame: (frame) => {
+                    // Render frame to canvas
+                    canvas.textContent = frame.join('\n');
+                }
+            });
+
+            // Control Handlers
+            charsetInput.addEventListener('input', (e) => {
+                charset = e.target.value || ' .:-=+*#%@';
+                engine.setCharset(charset);
+                engine.setPattern(getPattern(patternSelect.value));
+                clearPresetHighlight();
+            });
+
+            speedInput.addEventListener('input', (e) => {
+                fps = Number(e.target.value) * 6;
+                engine.setFPS(fps);
+                clearPresetHighlight();
+            });
+
+            patternSelect.addEventListener('change', (e) => {
+                patternName = e.target.value;
+                engine.setPattern(getPattern(patternName));
+                clearPresetHighlight();
+            });
+
+            // Start/Stop Animation
+            startBtn.addEventListener('click', () => {
+                if (!running) {
+                    engine.start();
+                    startBtn.textContent = 'Stop Animation';
+                } else {
+                    engine.stop();
+                    startBtn.textContent = 'Start Animation';
+                }
+                running = !running;
+            });
+
+            // Preset selection
+            function clearPresetHighlight() {
+                presetCards.forEach(card => card.classList.remove('ring', 'ring-2', 'ring-primary'));
+                selectedPreset = null;
+            }
+
+            presetCards.forEach((card, i) => {
+                card.addEventListener('click', () => {
+                    // Highlight selected
+                    clearPresetHighlight();
+                    card.classList.add('ring', 'ring-2', 'ring-primary');
+                    selectedPreset = i;
+                    // Update controls
+                    charsetInput.value = presets[i].charset;
+                    patternSelect.value = presets[i].pattern;
+                    speedInput.value = presets[i].speed;
+                    // Trigger input events to update engine
+                    charsetInput.dispatchEvent(new Event('input'));
+                    patternSelect.dispatchEvent(new Event('change'));
+                    speedInput.dispatchEvent(new Event('input'));
+                });
+            });
+
+            // Initialize with first frame
+            engine.renderFrame();
+        })();
+    </script>
+</body>
+</html> 
